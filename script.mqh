@@ -3,7 +3,6 @@
 #property version   "1.00"
 #property strict 
 
-#include <utilities/Utilities.mqh> 
 #include <utilities/TradeOps.mqh>
 
 CTradeOps   ops; 
@@ -18,7 +17,9 @@ bool     IsAboveBreakevenThreshold(int ticket);
 void     SetBreakeven(int ticket); 
 void     Scan(); 
 double   SymbolBid(string symbol); 
-double   SymbolAsk(string symbol); 
+double   SymbolAsk(string symbol);  
+bool     IsNewCandle(); 
+bool     AccountInProfit();
 
 
 //+------------------------------------------------------------------+
@@ -50,7 +51,21 @@ void OnTick()
 //+------------------------------------------------------------------+
 
 double SymbolBid(string symbol) { return SymbolInfoDouble (symbol, SYMBOL_BID); }
-double SymbolAsk(string symbol) { return SymbolInfoDouble (symbol, SYMBOL_ASK); }
+double SymbolAsk(string symbol) { return SymbolInfoDouble (symbol, SYMBOL_ASK); } 
+bool  AccountInProfit() { return AccountInfoDouble(ACCOUNT_PROFIT); }
+
+bool  IsNewCandle() {
+   //--- Checks if current candle is new candle. 
+   static datetime saved_candle_time; 
+   datetime current_time = iTime(Symbol(), PERIOD_CURRENT, 0); 
+   
+   bool new_candle = current_time != saved_candle_time; 
+   
+   saved_candle_time = current_time; 
+   return new_candle; 
+   
+}
+
 
 //--- Converts trade diff into points 
 int TradeDiffToTradePoints(string symbol, double value) {
@@ -93,8 +108,8 @@ void SetBreakeven(int ticket) {
 
 //--- Scans order pool for trades above threshold 
 void Scan() { 
-   if (InpBEFrequency == Candle && !UTIL_IS_NEW_CANDLE()) return;   
-   if (!UTIL_ACCOUNT_PROFIT()) return; 
+   if (InpBEFrequency == Candle && !IsNewCandle()) return;   
+   if (AccountInProfit()) return; 
    for (int i = 0; i < ops.PosTotal(); i++) {
       int s = ops.OP_OrderSelectByIndex(i);  
       int ticket = ops.PosTicket();
