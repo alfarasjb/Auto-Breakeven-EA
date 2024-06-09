@@ -4,9 +4,9 @@
 #property strict 
 
 #include "auto_breakeven.mqh" 
-
+#include "app.mqh"
 CAutoBreakeven auto_breakeven; 
-
+CTradeApp trade_app; 
 
 //+------------------------------------------------------------------+
 //| Expert initialization function                                   |
@@ -14,7 +14,7 @@ CAutoBreakeven auto_breakeven;
 int OnInit()
   {
 //---
-   
+   trade_app.Init(); 
 //---
    return(INIT_SUCCEEDED);
   }
@@ -24,7 +24,8 @@ int OnInit()
 void OnDeinit(const int reason)
   {
 //---
-   
+   ObjectsDeleteAll(0, -1, -1); 
+   trade_app.Destroy(reason); 
   }
 //+------------------------------------------------------------------+
 //| Expert tick function                                             |
