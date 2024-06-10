@@ -17,7 +17,7 @@ private:
 
 public:
       CAutoBreakeven() {}  
-      ~CAutoBreakeven() {}
+      ~CAutoBreakeven() {  Print("Destructor"); }
       void     Scan(); 
 
 };
