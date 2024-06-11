@@ -6,7 +6,7 @@
 #include "auto_breakeven.mqh" 
 #include "app.mqh"
 CAutoBreakeven auto_breakeven; 
-CTradeApp trade_app; 
+CTradeApp trade_app(GetPointer(auto_breakeven)); 
 
 //+------------------------------------------------------------------+
 //| Expert initialization function                                   |
@@ -37,3 +37,11 @@ void OnTick()
   }
 //+------------------------------------------------------------------+
 
+void OnChartEvent(
+   const int id,
+   const long& lparam,
+   const double& dparam,
+   const string& sparam
+   ) {
+   trade_app.ChartEvent(id, lparam, dparam, sparam);       
+}

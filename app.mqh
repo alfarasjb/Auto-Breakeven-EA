@@ -1,7 +1,9 @@
 #include "definition.mqh"
+#include "auto_breakeven.mqh"
 
 class CTradeApp : public CAppDialog {
 private:
+            CAutoBreakeven *TradeMain; 
             double   dpi_scale_;  
             
             //--- Buttons
@@ -13,9 +15,16 @@ private:
             //--- Labels
             CLabel   be_label_; 
             
+            //--- Start edit last stored value 
+            int      stored_be_; 
+            
             int      Scale(double value)     { return (int)MathRound(value * dpi_scale_); }
+            bool     ValidFieldInput(const string input_string);
+            bool     ValidPointsField(CEdit &field, const int default_value); 
+            bool     ValidPoints(const int value);
+            void     RaiseValidationError(ValidationError error, string target_value, string func);
 public: 
-   CTradeApp();  
+   CTradeApp(CAutoBreakeven *trade);  
    ~CTradeApp();
 
             void     Init(); 
@@ -53,7 +62,7 @@ public:
 }; 
 
 //--- App Constructor 
-CTradeApp::CTradeApp() {
+CTradeApp::CTradeApp(CAutoBreakeven *trade) : TradeMain(trade) {
    double screen_dpi    = (double)TerminalInfoInteger(TERMINAL_SCREEN_DPI); 
    dpi_scale_           = screen_dpi / 96; 
 }
@@ -165,9 +174,91 @@ bool     CTradeApp::CreateBEAllButton() {
    // TODO
    int x1   = 10; // Offset from app left 
    int x2   = x1 + WIDE_BUTTON_WIDTH; 
-   int y1   = 50; 
+   int y1   = 35; 
    int y2   = y1 + Scale(WIDE_BUTTON_HEIGHT);  
    if (!CreateWideButton(be_all_bt_, "BEAll", x1, y1, x2, y2, "BE All")) return false; 
    return true; 
 }
 
+
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+ 
+void     CTradeApp::OnClickIncrementBEPoints() {
+   int   target_value   = TradeMain.Increment(TradeMain.BEPoints());  
+   if (!ValidFieldInput(IntegerToString(target_value))) return; 
+   TradeMain.BEPoints(target_value);
+   be_field_.Text((string)TradeMain.BEPoints()); 
+}
+
+void     CTradeApp::OnClickDecrementBEPoints() {
+   int   target_value   = TradeMain.Decrement(TradeMain.BEPoints()); 
+   if (!ValidFieldInput(IntegerToString(target_value))) return; 
+   TradeMain.BEPoints(target_value); 
+   be_field_.Text((string)TradeMain.BEPoints());
+}
+
+void     CTradeApp::OnClickBEAllPositions() {
+   TradeMain.BreakevenAllPositions(); 
+}
+
+void     CTradeApp::OnStartEditBEField() {
+   stored_be_  = (int)StringToInteger(be_field_.Text()); 
+}
+
+void     CTradeApp::OnEndEditBEField() {
+   if (!ValidPointsField(be_field_, stored_be_)) return; 
+   TradeMain.BEPoints((int)StringToInteger(be_field_.Text())); 
+   be_field_.Text((string)TradeMain.BEPoints()); 
+}
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
+bool     CTradeApp::ValidFieldInput(const string input_string) {
+   int ch; 
+   for (int i = 0; i < StringLen(input_string); i++) {
+      ch = StringGetCharacter(input_string, i); 
+      if (ch > 57) return false;
+      if (ch < 48 && ch != 46) return false;
+   }
+   return true; 
+}
+
+bool     CTradeApp::ValidPoints(const int value) {
+   if (value < TradeMain.MinPoints()) return false;
+   return value >= 0; 
+}
+
+bool     CTradeApp::ValidPointsField(CEdit &field, const int default_value) {
+   string target_value = field.Text(); 
+   if (!ValidFieldInput(target_value)) {
+      RaiseValidationError(NonNumericError, target_value, __FUNCTION__); 
+      field.Text(IntegerToString(default_value));
+      return false;
+   }
+   if (!ValidPoints((int)StringToInteger(target_value))) {
+      RaiseValidationError(InvalidAdjustError, target_value, __FUNCTION__); 
+      field.Text(IntegerToString(default_value));
+      return false;
+   }
+   return true; 
+} 
+
+void     CTradeApp::RaiseValidationError(ValidationError error, string target_value, string func) {
+   string message;
+   switch(error) {
+      case NonNumericError: 
+         message = "Field contains non-numeric character.";
+         break;
+      case InvalidAdjustError:
+         message = "Value Limit Reached.";
+         break; 
+      case NegativeValueError:
+         message = "Negative Value."; 
+         break;
+      default:
+         message = "Unknown Error."; 
+         break;
+   }
+   // Console 
+}

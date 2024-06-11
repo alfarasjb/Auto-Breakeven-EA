@@ -5,6 +5,9 @@
 class CAutoBreakeven : public CTradeOps { 
 
 private: 
+      //--- Private member variables 
+      int      be_points_, step_, min_points_; 
+
       void     SetBreakeven(const int ticket); 
       int      TradeDiffToTradePoints(const string symbol, double value); 
       
@@ -13,13 +16,28 @@ private:
       bool     IsNewCandle(); 
       bool     AccountInProfit() const { return AccountInfoDouble(ACCOUNT_PROFIT); }
       double   SymbolBid(const string symbol) const   { return SymbolInfoDouble(symbol, SYMBOL_BID); }
-      double   SymbolAsk(const string symbol) const   { return SymbolInfoDouble(symbol, SYMBOL_ASK); }
+      double   SymbolAsk(const string symbol) const   { return SymbolInfoDouble(symbol, SYMBOL_ASK); } 
 
 public:
-      CAutoBreakeven() {}  
-      ~CAutoBreakeven() {  Print("Destructor"); }
-      void     Scan(); 
-
+      CAutoBreakeven() : be_points_(InpBEPointsThreshold), step_(InpStep), min_points_(InpMinPoints) {}  
+      ~CAutoBreakeven() {}
+      void     Scan();
+      int      BreakevenAllPositions();  
+      
+      
+      //--- Wrapper 
+      int      BEPoints() const     { return be_points_; }
+      void     BEPoints(int value)  { be_points_ = value; }
+      
+      int      Step() const         { return step_; }    
+      void     Step(int value)      { step_ = value; } 
+      
+      int      Increment(int value) { return value += Step(); }
+      int      Decrement(int value) { return value -= Step(); }  
+      
+      int      MinPoints() const    { return min_points_; }
+      void     MinPoints(int value) { min_points_ = value; }
+      
 };
 
 bool     CAutoBreakeven::IsNewCandle() {
@@ -65,7 +83,7 @@ bool     CAutoBreakeven::IsAboveBreakevenThreshold(int ticket) {
    }
    int points = TradeDiffToTradePoints(symbol, trade_diff);  
    
-   return points > InpBEPointsThreshold; 
+   return points > be_points_; 
 } 
 
 //--- Sets breakeven for specified ticket 
@@ -88,3 +106,21 @@ void     CAutoBreakeven::Scan() {
    } 
 }
 
+//--- Sets all positions to breakeven 
+int    CAutoBreakeven::BreakevenAllPositions() {
+   if (PosTotal() == 0) {
+      Console_.LogInformation("No trades to modify. Order pool is empty.", __FUNCTION__);    
+      return 0; 
+   }
+   
+   Console_.LogInformation(StringFormat("%i trades found. Attempting to set breakeven.", PosTotal()), __FUNCTION__); 
+   int s, ticket, num_modified = 0; 
+   for (int i = 0; i < PosTotal(); i++) {
+      s = OP_OrderSelectByIndex(i); 
+      ticket = PosTicket(); 
+      
+      if (!OP_ModifySL(ticket, PosOpenPrice())) continue; 
+      num_modified++; 
+   }
+   return num_modified; 
+}
